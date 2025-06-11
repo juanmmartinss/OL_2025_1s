@@ -1,0 +1,7 @@
+option gurobi_options 'timelimit=3600' ;
+
+solve;
+
+display t;
+display S;
+
