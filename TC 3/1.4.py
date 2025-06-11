@@ -3,31 +3,14 @@
 ---------------------------------------------------------------
 Problema 1.4 – Fábrica de Bobinas de Papel
 ---------------------------------------------------------------
-• 5 tipos de bobina (1 … 5)
-• 10 padrões de corte (PATTERNS abaixo)
-• Objetivo: minimizar o nº de bobinas-mestre (custo = 1 cada)
-
-São resolvidas duas situações:
-    (1) Sem estoque  → demanda deve ser atendida *exatamente*.
-    (2) Com estoque  → pode exceder a demanda (≥), sem custo extra.
-
-Necessita do pacote PuLP:
-    pip install pulp
----------------------------------------------------------------
 """
 
 import sys
-
-try:
-    from pulp import (
+from pulp import (
         LpProblem, LpVariable, LpInteger,
         LpMinimize, lpSum, value, PULP_CBC_CMD
     )
-except ModuleNotFoundError:
-    print("⚠  Pacote 'pulp' não encontrado. Instale com:\n    pip install pulp")
-    sys.exit(1)
 
-# ----------------------------- DADOS ---------------------------------
 TYPES = 5
 PATTERNS = [
     (5, 0, 0, 0, 0),   # 1
@@ -42,10 +25,8 @@ PATTERNS = [
     (1, 0, 0, 1, 0)    # 10
 ]
 
-DEMAND = (18, 31, 25, 15, 14)         # demanda semanal
+DEMAND = (18, 31, 25, 15, 14)      
 
-
-# ------------------------- FUNÇÃO DE RESOLUÇÃO ------------------------
 def solve_cutting_stock(exact=True):
     """
     Resolve o modelo:
@@ -56,7 +37,6 @@ def solve_cutting_stock(exact=True):
     tag = "NO_STOCK" if exact else "WITH_STOCK"
     prob = LpProblem(f"CuttingStock_{tag}", LpMinimize)
 
-    # variável inteira: nº vezes que cada padrão é usado
     x = {
         j: LpVariable(f"x_{j+1}", lowBound=0, cat=LpInteger)
         for j in range(len(PATTERNS))
@@ -68,14 +48,13 @@ def solve_cutting_stock(exact=True):
     # restrições de demanda por tipo
     for i in range(TYPES):
         coef = [PATTERNS[j][i] for j in range(len(PATTERNS))]
-        if exact:     # sem estoque
+        if exact:    
             prob += lpSum(coef[j] * x[j] for j in range(len(PATTERNS))) == DEMAND[i], \
                     f"demand_type_{i+1}"
-        else:         # com estoque
+        else:         
             prob += lpSum(coef[j] * x[j] for j in range(len(PATTERNS))) >= DEMAND[i], \
                     f"demand_type_{i+1}"
 
-    # resolve com CBC
     status = prob.solve(PULP_CBC_CMD(msg=False))
 
     qty_patterns = [int(value(x[j])) for j in range(len(PATTERNS))]
@@ -89,33 +68,27 @@ def solve_cutting_stock(exact=True):
 
     return status, total_master, qty_patterns, produced
 
-
-# --------------------------- IMPRESSÃO -------------------------------
 def pretty_print(title, res):
     status, n_master, qty, produced = res
     print("\n", "="*10, title, "="*10)
-    if status != 1:            # 1 = Ótimo no PuLP/CBC
-        print("⚠  Problema INVIÁVEL (status =", status, ")")
+    if status != 1:            
+        print("Problema INVIÁVEL (status =", status, ")")
         return
-    print(f"► Bobinas-mestre usadas : {n_master}")
-    print("► Padrões escolhidos    :")
+    print(f"Bobinas-mestre usadas : {n_master}")
+    print("Padrões escolhidos    :")
     for j, q in enumerate(qty, start=1):
         if q:
-            print(f"   Padrão {j:2d}  →  {q}")
-    print("► Produção final        :", produced)
-    print("► Demanda               :", list(DEMAND))
+            print(f"Padrão {j:2d}  →  {q}")
+    print("Produção final        :", produced)
+    print("Demanda               :", list(DEMAND))
     exced = [produced[i] - DEMAND[i] for i in range(TYPES)]
-    print("► Excedente (+) / Falta (-):", exced)
+    print("Excedente (+) / Falta (-):", exced)
     print("="*38)
 
-
-# ----------------------------- MAIN ----------------------------------
 def main():
-    # Variante 1 – sem estoque (igualdade)
     res1 = solve_cutting_stock(exact=True)
     pretty_print("VARIANTE 1  (demanda exata)", res1)
 
-    # Variante 2 – com estoque (desigualdade)
     res2 = solve_cutting_stock(exact=False)
     pretty_print("VARIANTE 2  (pode estocar)", res2)
 
